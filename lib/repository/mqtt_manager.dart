@@ -22,8 +22,8 @@ class MQTTManager {
     client.onSubscribed = onSubscribed;
     client.connectionMessage = MqttConnectMessage()
         .withClientIdentifier(clientId)
-        .authenticateAs(username, aioKey)
-        .startClean(); // Non persistent session for testing
+        .authenticateAs(username, aioKey);
+    // .startClean(); // Non persistent session for testing
   }
 
   Future<void> connect() async {
@@ -54,6 +54,10 @@ class MQTTManager {
     } else {
       print('MQTT client is not connected, cannot publish message');
     }
+  }
+
+  void disconnect() {
+    client.disconnect();
   }
 
   // Connection callback

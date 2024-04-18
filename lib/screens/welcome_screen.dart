@@ -1,6 +1,7 @@
 // ignore_for_file: prefer_const_literals_to_create_immutables, prefer_const_constructors
 
 import 'package:flutter/material.dart';
+import 'package:hcmut_iot/repository/mqtt_manager.dart';
 import 'package:hcmut_iot/repository/user_defaults_repository.dart';
 
 class WelcomeScreen extends StatefulWidget {
@@ -13,6 +14,7 @@ class WelcomeScreen extends StatefulWidget {
 class _WelcomeScreenState extends State<WelcomeScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _keyController = TextEditingController();
+  late MQTTManager mqttManager;
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -77,7 +79,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   ),
 
                   TextButton(
-                      onPressed: () {
+                      onPressed: () async {
                         if (_usernameController.text.isEmpty ||
                             _keyController.text.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -107,7 +109,34 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                           UserDefaultsRepository.saveUsername(
                               _usernameController.text);
                           UserDefaultsRepository.saveKey(_keyController.text);
-                          Navigator.pushNamed(context, '/');
+
+                          // connect to test key validity
+                          mqttManager = MQTTManager(_usernameController.text,
+                              _keyController.text, "flutter_client");
+                          try {
+                            await mqttManager.connect();
+                            mqttManager.disconnect();
+                            Navigator.pushNamed(context, '/');
+                          } catch (e) {
+                            showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  title: Text('Error'),
+                                  content: Text(
+                                      'Failed to connect to MQTT server: $e'),
+                                  actions: <Widget>[
+                                    TextButton(
+                                      child: Text('OK'),
+                                      onPressed: () {
+                                        Navigator.of(context).pop();
+                                      },
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          }
                         }
                       },
                       child: Container(

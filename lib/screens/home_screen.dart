@@ -41,9 +41,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> initMQTT() async {
-    const String username = USERNAME;
-    const String aioKey = KEY;
-    const String clientId = 'flutter_client';
+    String username = await UserDefaultsRepository.getUsername() as String;
+    String aioKey = await UserDefaultsRepository.getKey() as String;
+    print("Username: $username, Key: $aioKey");
+    const String clientId = 'newf_client';
     manager = MQTTManager(username, aioKey, clientId);
     await manager.connect();
 
