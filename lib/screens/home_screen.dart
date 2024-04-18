@@ -1,5 +1,6 @@
 // ignore_for_file: prefer_const_constructors
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:hcmut_iot/repository/mqtt_manager.dart';
@@ -22,7 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
       Icons.thermostat,
       "20°C"
     ],
-    ['sensor2', 'Light', Colors.yellow[200], Icons.sunny, "30 lux"],
+    ['sensor2', 'Light', Colors.amber, Icons.sunny, "30 lux"],
     ['sensor3', 'Humidity', Colors.blue[200], Icons.grass, "50%"],
   ];
 
@@ -36,11 +37,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void initState() {
+    // TODO: fetch the value from the sensors via MQTT subscription and update UI
+    // TODO: or fetch the latest value.
     super.initState();
     initMQTT();
   }
 
   Future<void> initMQTT() async {
+    
     String username = await UserDefaultsRepository.getUsername() as String;
     String aioKey = await UserDefaultsRepository.getKey() as String;
     print("Username: $username, Key: $aioKey");
@@ -188,11 +192,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             Text(
                               _sensors[index][1],
                             ),
-                            // Text(
-                            //   _sensors[index][4],
-                            //   style: TextStyle(
-                            //       fontWeight: FontWeight.bold, fontSize: 20),
-                            // )
+                            Text(
+                              _sensors[index][4],
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 20),
+                            )
                           ],
                         )),
                   );
@@ -259,14 +263,42 @@ class _HomeScreenState extends State<HomeScreen> {
                         Switch(
                           activeColor: Theme.of(context).primaryColorLight,
                           value: _switches[index][3],
-                          onChanged: (bool value) {
-                            setState(() {
-                              _switches[index][3] = value;
-                              // publish message
-                              manager.publish(
-                                  '${USERNAME}/feeds/${_switches[index][0]}',
-                                  (value) ? '1' : '0');
-                            });
+                          onChanged: (bool value) async {
+                            var connectivityResult =
+                                await (Connectivity().checkConnectivity());
+                            print(connectivityResult);
+                            if (connectivityResult[0] ==
+                                ConnectivityResult.none) {
+                              // No internet connection, show a dialog and don't change the switch state
+                              showDialog(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return AlertDialog(
+                                    title: Text('No Internet Connection'),
+                                    content: Text(
+                                        'Please check your internet connection and try again.'),
+                                    actions: <Widget>[
+                                      TextButton(
+                                        child: Text('OK'),
+                                        onPressed: () {
+                                          Navigator.of(context).pop();
+                                        },
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            } else {
+                              // Internet connection available, change the switch state
+                              setState(() {
+                                // TODO: if internet was toggled on and off again, attempt to subscribe to the topic again
+                                _switches[index][3] = value;
+                                // publish message
+                                manager.publish(
+                                    '${USERNAME}/feeds/${_switches[index][0]}',
+                                    (value) ? '1' : '0');
+                              });
+                            }
                           },
                         )
                       ],
