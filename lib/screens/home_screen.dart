@@ -3,7 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:hcmut_iot/repository/mqtt_manager.dart';
-import 'package:hcmut_iot/widgets/device_tile_widget.dart';
+import 'package:hcmut_iot/credentials.dart';
+import 'package:hcmut_iot/repository/user_defaults_repository.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -40,15 +41,18 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> initMQTT() async {
-    final String username = 'phucnguyenng';
-    final String aioKey = 'aio_pkkz09Ksjdb56LZdQRizTTkPwMyJ';
-    final String clientId = 'flutter_client';
+    const String username = USERNAME;
+    const String aioKey = KEY;
+    const String clientId = 'flutter_client';
     manager = MQTTManager(username, aioKey, clientId);
     await manager.connect();
 
     // _deviceFeedNames.forEach((device) {
     //   manager.subscribe('${username}/feeds/${device[0]}');
     // });
+    for (var element in _switches) {
+      manager.subscribe('${username}/feeds/${element[0]}');
+    }
   }
 
   @override
@@ -88,7 +92,35 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                       IconButton(
-                          onPressed: () {},
+                          onPressed: () {
+                            // push completely to welcome screen
+                            showDialog(
+                                context: context,
+                                builder: (context) {
+                                  return AlertDialog(
+                                    title: Text(
+                                        'Are you sure you want to log out?'),
+                                    actions: [
+                                      TextButton(
+                                          onPressed: () {
+                                            Navigator.of(context).pop();
+                                          },
+                                          child: Text('Cancel')),
+                                      TextButton(
+                                          onPressed: () {
+                                            Navigator.of(context).pop();
+                                            // clear user defaults
+                                            UserDefaultsRepository.clear();
+                                            Navigator.of(context)
+                                                .pushNamedAndRemoveUntil(
+                                                    '/welcome',
+                                                    (route) => false);
+                                          },
+                                          child: Text('Log out'))
+                                    ],
+                                  );
+                                });
+                          },
                           icon: Container(
                             padding: EdgeInsets.all(8),
                             decoration: BoxDecoration(
@@ -96,7 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     color: Theme.of(context).primaryColor,
                                     width: 2),
                                 borderRadius: BorderRadius.circular(10)),
-                            child: Icon(Icons.settings),
+                            child: Icon(Icons.logout),
                           ))
                     ],
                   ),
@@ -146,11 +178,11 @@ class _HomeScreenState extends State<HomeScreen> {
                           Text(
                             _sensors[index][1],
                           ),
-                          Text(
-                            _sensors[index][4],
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 20),
-                          )
+                          // Text(
+                          //   _sensors[index][4],
+                          //   style: TextStyle(
+                          //       fontWeight: FontWeight.bold, fontSize: 20),
+                          // )
                         ],
                       ));
                 },
@@ -219,6 +251,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           onChanged: (bool value) {
                             setState(() {
                               _switches[index][3] = value;
+                              // publish message
+                              manager.publish(
+                                  '${USERNAME}/feeds/${_switches[index][0]}',
+                                  (value) ? '1' : '0');
                             });
                           },
                         )
