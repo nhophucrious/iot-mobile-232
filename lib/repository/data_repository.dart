@@ -9,7 +9,8 @@ class DataRepository {
       final response = await http.get(Uri.https(
         'io.adafruit.com',
         '/api/v2/$username/feeds/$feedName/data',
-        {'limit': '5',
+        {
+          'limit': '15',
           'include': 'value,created_at',
         }, // query parameters
       )); // https://io.adafruit.com/api/v2/phucnguyenng/feeds/sensor1/data

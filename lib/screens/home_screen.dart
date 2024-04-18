@@ -163,29 +163,39 @@ class _HomeScreenState extends State<HomeScreen> {
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2, crossAxisSpacing: 1, mainAxisSpacing: 1),
                 itemBuilder: (context, index) {
-                  return Container(
-                      margin: EdgeInsets.all(
-                          MediaQuery.of(context).size.width * 0.02),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(color: _sensors[index][2], width: 2),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(_sensors[index][3],
-                              size: 50, color: _sensors[index][2]),
-                          Text(
-                            _sensors[index][1],
-                          ),
-                          // Text(
-                          //   _sensors[index][4],
-                          //   style: TextStyle(
-                          //       fontWeight: FontWeight.bold, fontSize: 20),
-                          // )
-                        ],
-                      ));
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).pushNamed('/sensor-detail',
+                          arguments: <String, String>{
+                            'feedName': _sensors[index][0],
+                            'sensorName': _sensors[index][1]
+                          });
+                    },
+                    child: Container(
+                        margin: EdgeInsets.all(
+                            MediaQuery.of(context).size.width * 0.02),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          border:
+                              Border.all(color: _sensors[index][2], width: 2),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(_sensors[index][3],
+                                size: 50, color: _sensors[index][2]),
+                            Text(
+                              _sensors[index][1],
+                            ),
+                            // Text(
+                            //   _sensors[index][4],
+                            //   style: TextStyle(
+                            //       fontWeight: FontWeight.bold, fontSize: 20),
+                            // )
+                          ],
+                        )),
+                  );
                 },
               ),
 
