@@ -1,8 +1,11 @@
-// ignore_for_file: prefer_const_constructors
+// ignore_for_file: prefer_const_constructors, avoid_print
+
+import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
+import 'package:hcmut_iot/repository/data_repository.dart';
 import 'package:hcmut_iot/repository/mqtt_manager.dart';
 import 'package:hcmut_iot/credentials.dart';
 import 'package:hcmut_iot/repository/user_defaults_repository.dart';
@@ -15,7 +18,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  List<dynamic> _sensors = [
+  final List<dynamic> _sensors = [
     [
       'sensor1',
       'Temperature',
@@ -27,7 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ['sensor3', 'Humidity', Colors.blue[200], Icons.grass, "50%"],
   ];
 
-  List<dynamic> _switches = [
+  final List<dynamic> _switches = [
     ['button1', 'Light Switch', Icons.lightbulb, false],
     ['button2', 'Pump Switch', Icons.water_drop, false],
   ];
@@ -37,14 +40,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void initState() {
-    // TODO: fetch the value from the sensors via MQTT subscription and update UI
-    // TODO: or fetch the latest value.
     super.initState();
-    initMQTT();
+    _connectAndSubscribe = initMQTT();
   }
 
   Future<void> initMQTT() async {
-    
     String username = await UserDefaultsRepository.getUsername() as String;
     String aioKey = await UserDefaultsRepository.getKey() as String;
     print("Username: $username, Key: $aioKey");
@@ -52,16 +52,54 @@ class _HomeScreenState extends State<HomeScreen> {
     manager = MQTTManager(username, aioKey, clientId);
     await manager.connect();
 
-    // _deviceFeedNames.forEach((device) {
-    //   manager.subscribe('${username}/feeds/${device[0]}');
-    // });
-    for (var element in _switches) {
-      manager.subscribe('${username}/feeds/${element[0]}');
+    DataRepository dataRepository = DataRepository();
+
+    for (var i = 0; i < _switches.length; i++) {
+      String feedName = _switches[i][0];
+      String topic = '$username/feeds/$feedName';
+      manager.subscribe(topic);
+
+      // Listen to updates for the switch
+      manager.updates(topic).listen((message) {
+        setState(() {
+          _switches[i][3] = message == '1' ? true : false;
+        });
+      });
+
+      // Fetch the initial value
+      try {
+        String initialValueString = await dataRepository.fetchLatestData(username, feedName);
+        print('Initial value for $feedName: $initialValueString');
+        var myjson = (jsonDecode(initialValueString));
+        var initialValue = myjson[0]['value'];
+        setState(() {
+          _switches[i][3] = initialValue == '1' ? true : false;
+        });
+      } catch (e) {
+        print('Failed to fetch initial value for $feedName: $e');
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    return FutureBuilder<void>(
+      future: _connectAndSubscribe,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.done) {
+          return _buildHomeScreen();
+        } else {
+          return Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+      },
+    );
+  }
+
+  Scaffold _buildHomeScreen() {
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -89,7 +127,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 fontSize: 34,
                                 color: Theme.of(context).primaryColor),
                           ),
-                          Text("Welcome back!",
+                          Text("Welcome!",
                               style: TextStyle(
                                   fontSize: 20,
                                   color: Theme.of(context).primaryColor,
@@ -295,7 +333,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 _switches[index][3] = value;
                                 // publish message
                                 manager.publish(
-                                    '${USERNAME}/feeds/${_switches[index][0]}',
+                                    '$USERNAME/feeds/${_switches[index][0]}',
                                     (value) ? '1' : '0');
                               });
                             }

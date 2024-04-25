@@ -66,6 +66,30 @@ class _SensorDetailScreenState extends State<SensorDetailScreen> {
               padding: EdgeInsets.symmetric(
                   horizontal: MediaQuery.of(context).size.width * 0.05),
               child: const Text(
+                "Live Data",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 24,
+                ),
+              ),
+            ),
+          ),
+          Container(
+            margin: EdgeInsets.symmetric(
+                horizontal: MediaQuery.of(context).size.width * 0.05),
+            padding: EdgeInsets.symmetric(
+                horizontal: MediaQuery.of(context).size.width * 0.05),
+            decoration: BoxDecoration(
+                color: Colors.grey, borderRadius: BorderRadius.circular(16)),
+            height: 100,
+            child: Center(child: Text("Fetching data...")),
+          ),
+          Align(
+            alignment: Alignment.topLeft,
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                  horizontal: MediaQuery.of(context).size.width * 0.05),
+              child: const Text(
                 "History",
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
