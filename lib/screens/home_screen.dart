@@ -9,6 +9,7 @@ import 'package:hcmut_iot/repository/data_repository.dart';
 import 'package:hcmut_iot/repository/mqtt_manager.dart';
 import 'package:hcmut_iot/credentials.dart';
 import 'package:hcmut_iot/repository/user_defaults_repository.dart';
+import 'package:mqtt_client/mqtt_client.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -54,6 +55,28 @@ class _HomeScreenState extends State<HomeScreen> {
 
     DataRepository dataRepository = DataRepository();
 
+    manager.connectionStatus.listen((status) {
+      if (status == MqttConnectionState.disconnected) {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text('MQTT Disconnected'),
+              content: Text('The MQTT client has been disconnected.'),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('OK'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      }
+    });
+
     for (var i = 0; i < _switches.length; i++) {
       String feedName = _switches[i][0];
       String topic = '$username/feeds/$feedName';
@@ -68,7 +91,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // Fetch the initial value
       try {
-        String initialValueString = await dataRepository.fetchLatestData(username, feedName);
+        String initialValueString =
+            await dataRepository.fetchLatestData(username, feedName);
         print('Initial value for $feedName: $initialValueString');
         var myjson = (jsonDecode(initialValueString));
         var initialValue = myjson[0]['value'];
@@ -86,7 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
       String topic = '$username/feeds/$feedName';
       manager.subscribe(topic);
 
-      // Listen to updates for the sensor 
+      // Listen to updates for the sensor
       manager.updates(topic).listen((message) {
         setState(() {
           _sensors[i][4] = message;
@@ -95,7 +119,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // Fetch the initial value
       try {
-        String initialValueString = await dataRepository.fetchLatestData(username, feedName);
+        String initialValueString =
+            await dataRepository.fetchLatestData(username, feedName);
         print('Initial value for $feedName: $initialValueString');
         var myjson = (jsonDecode(initialValueString));
         var initialValue = myjson[0]['value'];
@@ -161,45 +186,101 @@ class _HomeScreenState extends State<HomeScreen> {
                                   fontWeight: FontWeight.bold))
                         ],
                       ),
-                      IconButton(
-                          onPressed: () {
-                            // push completely to welcome screen
-                            showDialog(
-                                context: context,
-                                builder: (context) {
-                                  return AlertDialog(
-                                    title: Text(
-                                        'Are you sure you want to log out?'),
-                                    actions: [
-                                      TextButton(
-                                          onPressed: () {
-                                            Navigator.of(context).pop();
-                                          },
-                                          child: Text('Cancel')),
-                                      TextButton(
-                                          onPressed: () {
-                                            Navigator.of(context).pop();
-                                            // clear user defaults
-                                            UserDefaultsRepository.clear();
-                                            Navigator.of(context)
-                                                .pushNamedAndRemoveUntil(
-                                                    '/welcome',
-                                                    (route) => false);
-                                          },
-                                          child: Text('Log out'))
-                                    ],
+                      // button to reconnect (disabled when connected)
+                      Row(
+                        children: [
+                          StreamBuilder<MqttConnectionState>(
+                            stream: manager.connectionStatus,
+                            builder: (context, snapshot) {
+                              if (snapshot.data ==
+                                  MqttConnectionState.connected) {
+                                Future.microtask(() {
+                                  showDialog(
+                                    context: context,
+                                    builder: (BuildContext context) {
+                                      return AlertDialog(
+                                        title: Text('MQTT Reconnected'),
+                                        content: Text(
+                                            'The MQTT client has been reconnected.'),
+                                        actions: <Widget>[
+                                          TextButton(
+                                            child: Text('OK'),
+                                            onPressed: () {
+                                              Navigator.of(context).pop();
+                                            },
+                                          ),
+                                        ],
+                                      );
+                                    },
                                   );
                                 });
-                          },
-                          icon: Container(
-                            padding: EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                                border: Border.all(
-                                    color: Theme.of(context).primaryColor,
-                                    width: 2),
-                                borderRadius: BorderRadius.circular(10)),
-                            child: Icon(Icons.logout),
-                          ))
+                              }
+
+                              return IconButton(
+                                onPressed: snapshot.data ==
+                                        MqttConnectionState.connected
+                                    ? null
+                                    : () async {
+                                        await initMQTT();
+                                      },
+                                icon: Container(
+                                  padding: EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                      color: snapshot.data ==
+                                              MqttConnectionState.connected
+                                          ? Colors.grey
+                                          : Colors.white,
+                                      border: Border.all(
+                                          color: Theme.of(context).primaryColor,
+                                          width: 2),
+                                      borderRadius: BorderRadius.circular(10)),
+                                  child: Icon(Icons.refresh),
+                                ),
+                              );
+                            },
+                          ),
+                          // button to log out
+                          IconButton(
+                              onPressed: () {
+                                // push completely to welcome screen
+                                showDialog(
+                                    context: context,
+                                    builder: (context) {
+                                      return AlertDialog(
+                                        title: Text(
+                                            'Are you sure you want to log out?'),
+                                        actions: [
+                                          TextButton(
+                                              onPressed: () {
+                                                Navigator.of(context).pop();
+                                              },
+                                              child: Text('Cancel')),
+                                          TextButton(
+                                              onPressed: () {
+                                                Navigator.of(context).pop();
+                                                // clear user defaults
+                                                UserDefaultsRepository.clear();
+                                                Navigator.of(context)
+                                                    .pushNamedAndRemoveUntil(
+                                                        '/welcome',
+                                                        (route) => false);
+                                              },
+                                              child: Text('Log out'))
+                                        ],
+                                      );
+                                    });
+                              },
+                              icon: Container(
+                                padding: EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                    border: Border.all(
+                                        color: Theme.of(context).primaryColor,
+                                        width: 2),
+                                    borderRadius: BorderRadius.circular(10)),
+                                child: Icon(Icons.logout),
+                              )),
+                        ],
+                      )
                     ],
                   ),
                 ),

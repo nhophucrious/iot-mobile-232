@@ -9,6 +9,10 @@ class MQTTManager {
 
   final _controllers = <String, StreamController<String>>{};
 
+  final StreamController<MqttConnectionState> _connectionStatusController = StreamController<MqttConnectionState>.broadcast();
+
+  Stream<MqttConnectionState> get connectionStatus => _connectionStatusController.stream;
+
   Stream<String> updates(String topic) {
     return _controllers[topic]!.stream;
   }
@@ -39,6 +43,9 @@ class MQTTManager {
     while (client.connectionStatus?.state != MqttConnectionState.connected) {
       await Future.delayed(const Duration(milliseconds: 100));
     }
+
+    // Emit a connected event
+    _connectionStatusController.add(MqttConnectionState.connected);
   }
 
   Future<void> publish(String topic, String message) async {
@@ -58,6 +65,7 @@ class MQTTManager {
 
   void disconnect() {
     client.disconnect();
+    _connectionStatusController.add(MqttConnectionState.disconnected);
   }
 
   // Connection callback
