@@ -79,6 +79,33 @@ class _HomeScreenState extends State<HomeScreen> {
         print('Failed to fetch initial value for $feedName: $e');
       }
     }
+
+    // now for the sensors!
+    for (var i = 0; i < _sensors.length; i++) {
+      String feedName = _sensors[i][0];
+      String topic = '$username/feeds/$feedName';
+      manager.subscribe(topic);
+
+      // Listen to updates for the sensor 
+      manager.updates(topic).listen((message) {
+        setState(() {
+          _sensors[i][4] = message;
+        });
+      });
+
+      // Fetch the initial value
+      try {
+        String initialValueString = await dataRepository.fetchLatestData(username, feedName);
+        print('Initial value for $feedName: $initialValueString');
+        var myjson = (jsonDecode(initialValueString));
+        var initialValue = myjson[0]['value'];
+        setState(() {
+          _sensors[i][4] = initialValue;
+        });
+      } catch (e) {
+        print('Failed to fetch initial value for $feedName: $e');
+      }
+    }
   }
 
   @override
