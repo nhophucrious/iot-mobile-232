@@ -20,6 +20,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  /*
   final List<dynamic> _sensors = [
     [
       'sensor1',
@@ -31,10 +32,24 @@ class _HomeScreenState extends State<HomeScreen> {
     ['sensor2', 'Light', Colors.amber, Icons.sunny, "30 lux"],
     ['sensor3', 'Humidity', Colors.blue[200], Icons.grass, "50%"],
   ];
+  */
 
   final List<dynamic> _switches = [
-    ['button1', 'Light Switch', Icons.lightbulb, false],
-    ['button2', 'Pump Switch', Icons.water_drop, false],
+    ['mixer1', 'Mixer 1', Icons.water_drop_sharp, false],
+    ['mixer2', 'Mixer 2', Icons.water_drop_sharp, false],
+    ['mixer3', 'Mixer 3', Icons.water_drop_sharp, false]
+  ];
+  final List<dynamic> _sensors = [
+    [
+      'soil-temp',
+      'Soil Temperature',
+      Colors.deepOrange[200],
+      Icons.thermostat,
+      "20°C"
+    ],
+    ['soil-moist', 'Soil Moisture', Colors.blue, Icons.water_drop, "30%"],
+    ['temperature', 'Air Temperature', Colors.blue[200], Icons.ac_unit, "25°C"],
+    ['luminance', 'Light', Colors.amber, Icons.sunny, "30 lux"],
   ];
 
   late MQTTManager manager;
@@ -48,11 +63,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> initMQTT() async {
-    String username = await UserDefaultsRepository.getUsername() as String;
-    String aioKey = await UserDefaultsRepository.getKey() as String;
+    // String username = await UserDefaultsRepository.getUsername() as String;
+    String username = USERNAME;
+    print('username: $username');
+    // String aioKey = await UserDefaultsRepository.getKey() as String;
+    String aioKey = KEY;
+    print('key: $aioKey');
     print("Username: $username, Key: $aioKey");
     const String clientId = 'newf_client';
     manager = MQTTManager(username, aioKey, clientId);
+    print(clientId);
     await manager.connect();
 
     DataRepository dataRepository = DataRepository();
@@ -229,30 +249,20 @@ class _HomeScreenState extends State<HomeScreen> {
                           // button to log out
                           IconButton(
                               onPressed: () {
-                                // push completely to welcome screen
+                                // shows attribution dialog
                                 showDialog(
                                     context: context,
                                     builder: (context) {
-                                      return AlertDialog(
-                                        title: Text(
-                                            'Are you sure you want to log out?'),
+                                      return AlertDialog.adaptive(
+                                        title: Text('Greetings! 🎊'),
+                                        content: Text(
+                                            'This app was developed by: \n\n-Hồ Nguyễn Ngọc Bảo\n- Nguyễn Nho Gia Phúc\n- Lưu Quốc Vinh\n\nWe hope you enjoy using it! 🎉'),
                                         actions: [
                                           TextButton(
                                               onPressed: () {
                                                 Navigator.of(context).pop();
                                               },
-                                              child: Text('Cancel')),
-                                          TextButton(
-                                              onPressed: () {
-                                                Navigator.of(context).pop();
-                                                // clear user defaults
-                                                UserDefaultsRepository.clear();
-                                                Navigator.of(context)
-                                                    .pushNamedAndRemoveUntil(
-                                                        '/welcome',
-                                                        (route) => false);
-                                              },
-                                              child: Text('Log out'))
+                                              child: Text('OK')),
                                         ],
                                       );
                                     });
@@ -264,7 +274,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         color: Theme.of(context).primaryColor,
                                         width: 2),
                                     borderRadius: BorderRadius.circular(10)),
-                                child: Icon(Icons.logout),
+                                child: Icon(Icons.info),
                               )),
                         ],
                       )

@@ -9,8 +9,9 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   var username = await UserDefaultsRepository.getUsername();
   var key = await UserDefaultsRepository.getKey();
-  runApp(MyApp(
-      initialRoute: (username != null && key != null) ? '/' : '/welcome'));
+  //runApp(MyApp(
+  //initialRoute: (username != null && key != null) ? '/' : '/welcome'));
+  runApp(MyApp(initialRoute: '/'));
 }
 
 class MyApp extends StatelessWidget {

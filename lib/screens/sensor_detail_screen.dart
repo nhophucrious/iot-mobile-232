@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:hcmut_iot/credentials.dart';
 import 'package:hcmut_iot/repository/data_repository.dart';
 import 'package:hcmut_iot/repository/mqtt_manager.dart';
 import 'package:hcmut_iot/repository/user_defaults_repository.dart';
@@ -37,7 +38,8 @@ class _SensorDetailScreenState extends State<SensorDetailScreen> {
   }
 
   Future<void> fetchLatestValue() async {
-    var username = await UserDefaultsRepository.getUsername() as String;
+    // var username = await UserDefaultsRepository.getUsername() as String;
+    var username = USERNAME;
     var latestValueString =
         await dataRepository.fetchLatestData(username, widget.feedName);
     var myjson = (jsonDecode(latestValueString));
@@ -48,7 +50,8 @@ class _SensorDetailScreenState extends State<SensorDetailScreen> {
   }
 
   Future<List<ChartData>> fetchData() async {
-    var username = await UserDefaultsRepository.getUsername() as String;
+    // var username = await UserDefaultsRepository.getUsername() as String;
+    var username = USERNAME;
     var test = (await dataRepository.fetchData(username, widget.feedName));
     var myjson = (jsonDecode(test));
     data = myjson;
@@ -63,8 +66,10 @@ class _SensorDetailScreenState extends State<SensorDetailScreen> {
   }
 
   Future<void> initMQTT() async {
-    var username = await UserDefaultsRepository.getUsername() as String;
-    var key = await UserDefaultsRepository.getKey() as String;
+    // var username = await UserDefaultsRepository.getUsername() as String;
+    // var key = await UserDefaultsRepository.getKey() as String;
+    const String username = USERNAME;
+    const String key = KEY;
     const String clientId = 'hcmut_iot_indie';
     manager = MQTTManager(username, key, clientId);
     await manager!.connect();

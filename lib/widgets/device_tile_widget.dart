@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:hcmut_iot/credentials.dart';
 import 'package:hcmut_iot/repository/mqtt_manager.dart';
 
 class DeviceTileWidget extends StatefulWidget {
@@ -37,16 +38,13 @@ class _DeviceTileWidgetState extends State<DeviceTileWidget> {
   }
 
   Future<void> _connectAndSubscribe() async {
-    print("do we know if he came a lot? Or just the");
     try {
-      final topic = 'phucnguyenng/feeds/${widget.feedName}';
+      final topic = '$USERNAME/feeds/${widget.feedName}';
       widget.mqttManager.subscribe(topic);
       _subscription = widget.mqttManager.updates(topic).listen((message) {
         if (mounted) {
           setState(() {
             value = double.tryParse(message) ?? 0;
-            print(
-                "Do we know if he came a lot? Or just the same as an average man, about a tablespoon?");
             errorMessage = null;
           });
         }
