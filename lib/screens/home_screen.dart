@@ -1,5 +1,6 @@
 // ignore_for_file: prefer_const_constructors, avoid_print
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -38,6 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   late MQTTManager manager;
   Future<void>? _connectAndSubscribe;
+  StreamController<String> ackController = StreamController<String>.broadcast();
 
   @override
   void initState() {
@@ -54,6 +56,18 @@ class _HomeScreenState extends State<HomeScreen> {
     await manager.connect();
 
     DataRepository dataRepository = DataRepository();
+
+    // Subscribe to the "ack" feed
+    String ackTopic = '$username/feeds/ack';
+    manager.subscribe(ackTopic);
+
+    // Convert the updates stream to a broadcast stream
+    Stream<String> ackUpdates = manager.updates(ackTopic).asBroadcastStream();
+
+    // Listen for acknowledgment messages
+    ackUpdates.listen((message) {
+      ackController.add(message);
+    });
 
     manager.connectionStatus.listen((status) {
       if (status == MqttConnectionState.disconnected) {
@@ -183,7 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               style: TextStyle(
                                   fontSize: 20,
                                   color: Theme.of(context).primaryColor,
-                                  fontWeight: FontWeight.bold))
+                                  fontWeight: FontWeight.bold)),
                         ],
                       ),
                       // button to reconnect (disabled when connected)
@@ -192,37 +206,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           StreamBuilder<MqttConnectionState>(
                             stream: manager.connectionStatus,
                             builder: (context, snapshot) {
-                              if (snapshot.data ==
-                                  MqttConnectionState.connected) {
-                                Future.microtask(() {
-                                  showDialog(
-                                    context: context,
-                                    builder: (BuildContext context) {
-                                      return AlertDialog(
-                                        title: Text('MQTT Reconnected'),
-                                        content: Text(
-                                            'The MQTT client has been reconnected.'),
-                                        actions: <Widget>[
-                                          TextButton(
-                                            child: Text('OK'),
-                                            onPressed: () {
-                                              Navigator.of(context).pop();
-                                            },
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                  );
-                                });
-                              }
-
                               return IconButton(
-                                onPressed: snapshot.data ==
-                                        MqttConnectionState.connected
-                                    ? null
-                                    : () async {
-                                        await initMQTT();
-                                      },
+                                onPressed: () async {
+                                  await initMQTT();
+                                },
                                 icon: Container(
                                   padding: EdgeInsets.all(8),
                                   decoration: BoxDecoration(
@@ -435,15 +422,63 @@ class _HomeScreenState extends State<HomeScreen> {
                                 },
                               );
                             } else {
-                              // Internet connection available, change the switch state
-                              setState(() {
-                                // TODO: if internet was toggled on and off again, attempt to subscribe to the topic again
-                                _switches[index][3] = value;
-                                // publish message
+                              // Internet connection available, try to publish message
+                              try {
                                 manager.publish(
                                     '$USERNAME/feeds/${_switches[index][0]}',
                                     (value) ? '1' : '0');
-                              });
+
+                                // Wait for acknowledgment
+                                bool receivedAck = await ackController.stream
+                                        .timeout(Duration(seconds: 5))
+                                        .firstWhere(
+                                            (message) => message == '1') ==
+                                    '1';
+
+                                if (receivedAck) {
+                                  // If acknowledgment is received, change the switch state
+                                  setState(() {
+                                    _switches[index][3] = value;
+                                  });
+                                } else {
+                                  // If acknowledgment is not received, revert the switch state and send the previous value back to Adafruit IO
+                                  setState(() {
+                                    _switches[index][3] = !_switches[index][3];
+                                  });
+                                  manager.publish(
+                                      '$USERNAME/feeds/${_switches[index][0]}',
+                                      (_switches[index][3]) ? '1' : '0');
+                                }
+                              } catch (e) {
+                                if (e is TimeoutException) {
+                                  // If a TimeoutException is thrown, revert the switch state and send the previous value back to Adafruit IO
+                                  setState(() {
+                                    _switches[index][3] = !_switches[index][3];
+                                  });
+                                  manager.publish(
+                                      '$USERNAME/feeds/${_switches[index][0]}',
+                                      (_switches[index][3]) ? '1' : '0');
+                                } else {
+                                  showDialog(
+                                    context: context,
+                                    builder: (BuildContext context) {
+                                      return AlertDialog(
+                                        title: Text('MQTT Disconnected'),
+                                        content: Text(
+                                            'The MQTT client is not connected.'),
+                                        actions: <Widget>[
+                                          TextButton(
+                                            child: Text('OK'),
+                                            onPressed: () {
+                                              Navigator.of(context).pop();
+                                            },
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
+                                }
+                              }
                             }
                           },
                         )

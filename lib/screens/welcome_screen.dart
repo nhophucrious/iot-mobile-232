@@ -31,6 +31,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               children: [
                 SizedBox(height: 50),
                 Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
                       'Welcome to HCMUT IoT',
