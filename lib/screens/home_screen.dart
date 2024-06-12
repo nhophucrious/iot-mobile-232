@@ -34,6 +34,8 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
   */
 
+  bool _hasThirdPumpRun = false;
+
   final List<dynamic> _switches = [
     ['mixer1', 'Mixer 1', Icons.water_drop_sharp, false],
     ['mixer2', 'Mixer 2', Icons.water_drop_sharp, false],
@@ -118,8 +120,32 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // Listen to updates for the switch
       manager.updates(topic).listen((message) {
+        print('Got message: $message from $topic');
         setState(() {
           _switches[i][3] = message == 'ON' ? true : false;
+          if (feedName == 'mixer3' && message == 'OFF') {
+            // _hasThirdPumpRun = true;
+            // now we select the watering area
+            showModalBottomSheet(
+              context: context,
+              builder: (BuildContext context) {
+                return MyBottomSheet(
+                  onRedo: () {
+                    // Publish the message
+                    manager.publish(
+                      '$USERNAME/feeds/${_switches[0][0]}',
+                      'ON',
+                    );
+
+                    // Update the local state
+                    setState(() {
+                      _switches[0][3] = true; // restart the flow
+                    });
+                  },
+                );
+              },
+            );
+          }
         });
       });
 
@@ -483,6 +509,115 @@ class _HomeScreenState extends State<HomeScreen> {
               // Expanded(child: Container())
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class MyBottomSheet extends StatefulWidget {
+  final Function onRedo;
+  MyBottomSheet({required this.onRedo});
+  @override
+  _MyBottomSheetState createState() => _MyBottomSheetState();
+}
+
+class _MyBottomSheetState extends State<MyBottomSheet> {
+  String _status = 'Choose the area to water:';
+  int _step = 0;
+
+  void _startTimer() {
+    Future.delayed(Duration(seconds: 5)).then((_) {
+      setState(() {
+        _step++;
+        if (_step == 1) {
+          _status = 'Pumping water in...';
+          _startTimer();
+        } else if (_step == 2) {
+          _status = 'Pumping out residue water...';
+          _startTimer();
+        } else if (_step == 3) {
+          _status = 'Do you want to redo the steps?';
+        }
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height / 2,
+      child: Center(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                _status,
+                style: TextStyle(fontSize: 24),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            if (_step == 0)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _status = 'Area 1 selected. Pumping water in...';
+                        _step++;
+                        _startTimer();
+                      });
+                    },
+                    child: Text('Area 1'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _status = 'Area 2 selected. Pumping water in...';
+                        _step++;
+                        _startTimer();
+                      });
+                    },
+                    child:
+                        Text('Area 2', style: TextStyle(color: Colors.amber)),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _status = 'Area 3 selected. Pumping water in...';
+                        _step++;
+                        _startTimer();
+                      });
+                    },
+                    child: Text('Area 3', style: TextStyle(color: Colors.red)),
+                  ),
+                ],
+              ),
+            if (_step == 3)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      widget.onRedo();
+                      Navigator.pop(context);
+                    },
+                    child: Text('Redo', style: TextStyle(fontSize: 20)),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: Text('Done',
+                        style: TextStyle(
+                            fontSize: 20, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+          ],
         ),
       ),
     );
