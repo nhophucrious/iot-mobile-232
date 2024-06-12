@@ -119,7 +119,7 @@ class _HomeScreenState extends State<HomeScreen> {
       // Listen to updates for the switch
       manager.updates(topic).listen((message) {
         setState(() {
-          _switches[i][3] = message == '1' ? true : false;
+          _switches[i][3] = message == 'ON' ? true : false;
         });
       });
 
@@ -131,7 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
         var myjson = (jsonDecode(initialValueString));
         var initialValue = myjson[0]['value'];
         setState(() {
-          _switches[i][3] = initialValue == '1' ? true : false;
+          _switches[i][3] = initialValue == 'ON' ? true : false;
         });
       } catch (e) {
         print('Failed to fetch initial value for $feedName: $e');
@@ -436,29 +436,12 @@ class _HomeScreenState extends State<HomeScreen> {
                               try {
                                 manager.publish(
                                     '$USERNAME/feeds/${_switches[index][0]}',
-                                    (value) ? '1' : '0');
+                                    (value) ? 'ON' : 'OFF');
 
-                                // Wait for acknowledgment
-                                bool receivedAck = await ackController.stream
-                                        .timeout(Duration(seconds: 5))
-                                        .firstWhere(
-                                            (message) => message == '1') ==
-                                    '1';
-
-                                if (receivedAck) {
-                                  // If acknowledgment is received, change the switch state
-                                  setState(() {
-                                    _switches[index][3] = value;
-                                  });
-                                } else {
-                                  // If acknowledgment is not received, revert the switch state and send the previous value back to Adafruit IO
-                                  setState(() {
-                                    _switches[index][3] = !_switches[index][3];
-                                  });
-                                  manager.publish(
-                                      '$USERNAME/feeds/${_switches[index][0]}',
-                                      (_switches[index][3]) ? '1' : '0');
-                                }
+                                // Change the switch state immediately after publishing
+                                setState(() {
+                                  _switches[index][3] = value;
+                                });
                               } catch (e) {
                                 if (e is TimeoutException) {
                                   // If a TimeoutException is thrown, revert the switch state and send the previous value back to Adafruit IO
@@ -467,7 +450,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   });
                                   manager.publish(
                                       '$USERNAME/feeds/${_switches[index][0]}',
-                                      (_switches[index][3]) ? '1' : '0');
+                                      (_switches[index][3]) ? 'ON' : 'OFF');
                                 } else {
                                   showDialog(
                                     context: context,
